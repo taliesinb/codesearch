@@ -173,9 +173,20 @@ func (ix *IndexWriter) Add(name string, f io.Reader) {
 			linelen = 0
 		}
 	}
-	if ix.trigram.Len() > maxTextTrigrams {
+	var numtries = ix.trigram.Len()
+	if numtries > maxTextTrigrams {
 		if ix.LogSkip {
-			log.Printf("%s: too many trigrams, probably not text, ignoring\n", name)
+			log.Printf("%s: too many trigrams (%d), probably not text, ignoring\n", name, numtries)
+			if ix.Verbose {
+				var strs = make([]byte, numtries*4)
+				for i, gram := range ix.trigram.Dense() {
+					strs[4*i] = byte(gram >> 16)
+					strs[4*i+1] = byte(gram >> 8)
+					strs[4*i+2] = byte(gram >> 0)
+					strs[4*i+3] = ' '
+				}
+				log.Printf("\t%s\n", strs)
+			}
 		}
 		return
 	}
