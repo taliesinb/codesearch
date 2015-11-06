@@ -132,9 +132,12 @@ func main() {
 	ix := index.Create(file)
 	ix.Verbose = *verboseFlag
 	ix.LogSkip = *skipFlag || ix.Verbose
-	skipExtsList := strings.Split(strings.ToLower(*skipExts), ",")
+	var skipExtsList []string
+	if *skipExts != "" {
+		skipExtsList = strings.Split(strings.ToLower(*skipExts), ",")
+	}
 	if len(skipExtsList) > 0 {
-		log.Printf("Skipping files with extensions: %v", skipExtsList)
+		log.Printf("Skipping files with extensions: %#v", skipExtsList)
 	}
 	ix.AddPaths(args)
 	for _, arg := range args {
@@ -162,7 +165,9 @@ func main() {
 					}
 					for _, e := range skipExtsList {
 						if e == ext {
-							//							log.Printf("Skipping %s", path)
+							if ix.LogSkip {
+								log.Printf("Skipping %s due to forbidden extension.\n", path)
+							}
 							return nil
 						}
 					}
