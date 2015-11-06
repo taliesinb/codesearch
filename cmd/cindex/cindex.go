@@ -21,7 +21,7 @@ import (
 var usageMessage = `usage: cindex [-list] [-reset] [path...]
 
 Cindex prepares the trigram index for use by csearch.  The index is the
-file named by $CSEARCHINDEX, or else $HOME/.csearchindex.
+file given by --index, or else $CSEARCHINDEX, or else $HOME/.csearchindex.
 
 The simplest invocation is
 
@@ -60,6 +60,7 @@ var (
 	resetFlag   = flag.Bool("reset", false, "discard existing index")
 	verboseFlag = flag.Bool("verbose", false, "print extra information")
 	skipFlag    = flag.Bool("logskip", false, "log skipped files")
+	indexFlag   = flag.String("index", "", "path of the index to use")
 	skipExts    = flag.String("skipexts", "", "list of file extensions to skip")
 	cpuProfile  = flag.String("cpuprofile", "", "write cpu profile to this file")
 )
@@ -115,6 +116,9 @@ func main() {
 		args = args[1:]
 	}
 
+	if *indexFlag != "" {
+		index.SetFile(*indexFlag)
+	}
 	master := index.File()
 	if _, err := os.Stat(master); err != nil {
 		// Does not exist.

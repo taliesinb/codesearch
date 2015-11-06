@@ -426,9 +426,18 @@ func mmap(file string) mmapData {
 	return mmapFile(f)
 }
 
+var indexPath string
+
+func SetFile(f string) {
+	indexPath = f
+}
+
 // File returns the name of the index file to use.
 // It is either $CSEARCHINDEX or $HOME/.csearchindex.
 func File() string {
+	if indexPath != "" {
+		return indexPath
+	}
 	f := os.Getenv("CSEARCHINDEX")
 	if f != "" {
 		return f

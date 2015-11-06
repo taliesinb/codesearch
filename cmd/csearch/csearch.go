@@ -36,8 +36,8 @@ where path... is a list of directories or individual files to be included in the
 If no index exists, this command creates one.  If an index already exists, cindex
 overwrites it.  Run cindex -help for more.
 
-Csearch uses the index stored in $CSEARCHINDEX or, if that variable is unset or
-empty, $HOME/.csearchindex.
+Csearch uses the index whose path is given by --index, or else the path stored in 
+$CSEARCHINDEX or, if that variable is unset or empty, $HOME/.csearchindex.
 `
 
 func usage() {
@@ -48,6 +48,7 @@ func usage() {
 var (
 	fFlag       = flag.String("f", "", "search only files with names matching this regexp")
 	iFlag       = flag.Bool("i", false, "case-insensitive search")
+	indexFlag   = flag.String("index", "", "path of the index to use")
 	verboseFlag = flag.Bool("verbose", false, "print extra information")
 	bruteFlag   = flag.Bool("brute", false, "brute force - search all files in index")
 	cpuProfile  = flag.String("cpuprofile", "", "write cpu profile to this file")
@@ -100,7 +101,9 @@ func Main() {
 	if *verboseFlag {
 		log.Printf("query: %s\n", q)
 	}
-
+	if *indexFlag != "" {
+		index.SetFile(*indexFlag)
+	}
 	ix := index.Open(index.File())
 	ix.Verbose = *verboseFlag
 	var post []uint32
