@@ -16,3 +16,25 @@ Use "go get -u" to update an existing installation.
 Russ Cox 
 rsc@swtch.com
 June 2015
+
+---------
+
+Information about this fork:
+
+This fork is adds some small features to make it easier to skip certain file 
+extensions, to find out why certain files are exceeding the trigram limits, 
+to localize the causes of skipping in large files, to produce null-delimited 
+output, and to bypass some problematic content that is typical in Mathematica 
+notebook files which prevent them from being indexed in many cases.
+
+I'm not quite sure how to check this as a fork but still have the hard-coded
+package URLs resolve properly, I merely followed the instructions at 
+http://blog.campoy.cat/2014/03/github-and-go-forking-pull-requests-and.html
+to get it working locally for me. 
+
+I suspect one might have to check out the original repo, then 
+"git remote add fork https://github.com/taliesinb/codesearch; git pull fork".
+
+Taliesin Beynon
+taliesinb@gmail.com
+November 2015
