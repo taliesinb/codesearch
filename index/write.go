@@ -120,6 +120,7 @@ func (ix *IndexWriter) Add(name string, f io.Reader) {
 	var (
 		c       = byte(0)
 		i       = 0
+		lineno  = 1
 		buf     = ix.inbuf[:0]
 		tv      = uint32(0)
 		n       = int64(0)
@@ -134,10 +135,10 @@ func (ix *IndexWriter) Add(name string, f io.Reader) {
 					if err == io.EOF {
 						break
 					}
-					log.Printf("%s: %v\n", name, err)
+					log.Printf("%s:%d: %v\n", name, lineno, err)
 					return
 				}
-				log.Printf("%s: 0-length read\n", name)
+				log.Printf("%s:%d: 0-length read\n", name, lineno)
 				return
 			}
 			buf = buf[:n]
@@ -151,23 +152,24 @@ func (ix *IndexWriter) Add(name string, f io.Reader) {
 		}
 		if !validUTF8((tv>>8)&0xFF, tv&0xFF) {
 			if ix.LogSkip {
-				log.Printf("%s: invalid UTF-8, ignoring\n", name)
+				log.Printf("%s:%d: invalid UTF-8, ignoring\n", name, lineno)
 			}
 			return
 		}
 		if n > maxFileLen {
 			if ix.LogSkip {
-				log.Printf("%s: too long, ignoring\n", name)
+				log.Printf("%s:%d: too long, ignoring\n", name, lineno)
 			}
 			return
 		}
 		if linelen++; linelen > maxLineLen {
 			if ix.LogSkip {
-				log.Printf("%s: very long lines, ignoring\n", name)
+				log.Printf("%s:%d: very long lines, ignoring\n", name, lineno)
 			}
 			return
 		}
 		if c == '\n' {
+			lineno++
 			linelen = 0
 		}
 	}
