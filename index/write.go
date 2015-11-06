@@ -160,7 +160,6 @@ func (ix *IndexWriter) Add(name string, f io.Reader) {
 		}
 	}
 	for {
-		tv = (tv << 8) & (1<<24 - 1)
 		if i >= len(buf) {
 			n, err := f.Read(buf[:cap(buf)])
 			if n == 0 {
