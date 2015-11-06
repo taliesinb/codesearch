@@ -5,10 +5,12 @@
 package index
 
 import (
+	by "bytes"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"unsafe"
 
@@ -113,6 +115,10 @@ func (ix *IndexWriter) AddFile(name string) {
 	ix.Add(name, f)
 }
 
+func isdigit(code byte) bool {
+	return 48 <= code && code <= 57
+}
+
 // Add adds the file f to the index under the given name.
 // It logs errors using package log.
 func (ix *IndexWriter) Add(name string, f io.Reader) {
@@ -125,7 +131,34 @@ func (ix *IndexWriter) Add(name string, f io.Reader) {
 		tv      = uint32(0)
 		n       = int64(0)
 		linelen = 0
+		ext     = filepath.Ext(name)
+		isnb    = ext == ".nb"
+		skip    = false
 	)
+	if isnb {
+		if ix.Verbose {
+			log.Printf("%s: Notebook file\n", name)
+		}
+		// read until Notebook[{, which skips the metadata preamble
+		for {
+			i = by.IndexByte(buf, '{')
+			if i >= 0 {
+				lineno += by.Count(buf[:i], []byte{'\n'})
+				break
+			} else {
+				lineno += by.Count(buf, []byte{'\n'})
+			}
+			n, err := f.Read(buf[:cap(buf)])
+			if err != nil {
+				log.Printf("%s:%d: Error reading", name, lineno)
+				panic("Error reading!")
+			}
+			buf = buf[:n]
+		}
+		if ix.Verbose {
+			log.Printf("%s:%d: Found start of notebook", name, lineno)
+		}
+	}
 	for {
 		tv = (tv << 8) & (1<<24 - 1)
 		if i >= len(buf) {
@@ -146,6 +179,52 @@ func (ix *IndexWriter) Add(name string, f io.Reader) {
 		}
 		c = buf[i]
 		i++
+		if isnb {
+			if tv == 4550244 /* End */ && c == ' ' && by.HasPrefix(buf[i:], []byte("of Notebook Content *)")) {
+				if ix.Verbose {
+					log.Printf("%s:%d: Found end of notebook!", name, lineno)
+				}
+				break
+			}
+			if c == '.' && isdigit(byte(tv)) {
+				if ix.Verbose {
+					log.Printf("%s:%d: Skipping digits\n", name, lineno)
+				}
+				for i < len(buf) && isdigit(buf[i]) {
+					i++
+				}
+				n = 0
+				continue
+			}
+			if !skip {
+				if (tv == 2230833 && c == ':') || (tv == 2230794 && c == '1' && i < len(buf) && buf[i] == ':') || (tv == 3226213 && c == 'J') {
+					if ix.Verbose {
+						log.Printf("%s:%d: Recognized CompressedData\n", name, lineno)
+					}
+					skip = true
+					continue
+				} else if tv == 2251836 && c == '\\' && by.HasPrefix(buf[i:], []byte{'\n', 'e'}) {
+					if ix.Verbose {
+						log.Printf("%s:%d: Recognized CompressedBitmap\n", name, lineno)
+					}
+					skip = true
+				}
+			} else {
+				if c == '"' {
+					if ix.Verbose {
+						log.Printf("%s:%d: End of CompressedData/Bitmap\n", name, lineno)
+					}
+					n = 0
+					skip = false
+				} else {
+					if c == '\n' {
+						lineno++
+					}
+					continue
+				}
+			}
+		}
+		tv = (tv << 8) & (1<<24 - 1)
 		tv |= uint32(c)
 		if n++; n >= 3 {
 			ix.trigram.Add(tv)
