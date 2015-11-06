@@ -9,9 +9,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	pth "path"
 	"path/filepath"
 	"runtime/pprof"
 	"sort"
+	"strings"
 
 	"github.com/google/codesearch/index"
 )
@@ -57,6 +59,8 @@ var (
 	listFlag    = flag.Bool("list", false, "list indexed paths and exit")
 	resetFlag   = flag.Bool("reset", false, "discard existing index")
 	verboseFlag = flag.Bool("verbose", false, "print extra information")
+	skipFlag    = flag.Bool("logskip", false, "log skipped files")
+	skipExts    = flag.String("skipexts", "", "list of file extensions to skip")
 	cpuProfile  = flag.String("cpuprofile", "", "write cpu profile to this file")
 )
 
@@ -123,13 +127,19 @@ func main() {
 
 	ix := index.Create(file)
 	ix.Verbose = *verboseFlag
+	ix.LogSkip = *skipFlag || ix.Verbose
+	skipExtsList := strings.Split(strings.ToLower(*skipExts), ",")
+	if len(skipExtsList) > 0 {
+		log.Printf("Skipping files with extensions: %v", skipExtsList)
+	}
 	ix.AddPaths(args)
 	for _, arg := range args {
 		log.Printf("index %s", arg)
 		filepath.Walk(arg, func(path string, info os.FileInfo, err error) error {
 			if _, elem := filepath.Split(path); elem != "" {
 				// Skip various temporary or "hidden" files or directories.
-				if elem[0] == '.' || elem[0] == '#' || elem[0] == '~' || elem[len(elem)-1] == '~' {
+				if elem[0] == '.' || elem[0] == '#' || elem[0] == '~' || elem[len(elem)-1] == '~' ||
+					strings.Contains(elem, ".backup") || strings.Contains(elem, ".old") {
 					if info.IsDir() {
 						return filepath.SkipDir
 					}
@@ -141,6 +151,18 @@ func main() {
 				return nil
 			}
 			if info != nil && info.Mode()&os.ModeType == 0 {
+				if len(skipExtsList) > 0 {
+					ext := strings.ToLower(pth.Ext(path))
+					if len(ext) > 0 {
+						ext = ext[1:]
+					}
+					for _, e := range skipExtsList {
+						if e == ext {
+							//							log.Printf("Skipping %s", path)
+							return nil
+						}
+					}
+				}
 				ix.AddFile(path)
 			}
 			return nil
